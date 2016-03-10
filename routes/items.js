@@ -11,7 +11,7 @@ var properties = require ('properties');
 var debug = require('debug')('app:routes');
 var fs = require('fs');
 
-function Index(users, items){
+function Items(users, items){
 
   function getUserHome() {
     return process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
@@ -76,11 +76,10 @@ function Index(users, items){
 
 
   function restrict(onFail, req, res, next) {
-    debug('Session: %s', JSON.stringify(req.session));
+    console.log('Session:', req.session);
     if (req.session.user) {
       next();
     } else {
-      debug('failed to find user in session');
       onFail(req, res);
     }
   }
@@ -121,7 +120,7 @@ function Index(users, items){
           //plain text password - do not use in production
           if(user.password === req.param('password')){
             req.session.user = user;
-            res.redirect('/items');
+            res.redirect('/my-items');
           } else {
             res.redirect('/login');
           }
@@ -131,40 +130,17 @@ function Index(users, items){
   });
 
   router.get('/items/:id', backToLogin, function(req, res, next){
-    debug(req.params);
-    items.load(req.params.id, function(err, item){
+    items.load(req.param('id'), function(err, item){
       if(err){
         res.status(404).send('error loading: ' + err);
       } else {
-        var componentEditorUrl = config.get('COMPONENT_EDITOR_URL');
-
-        item.xhtml = item.xhtml.replace(/(?:\r\n|\r|\n)/g, '<br />');
-
-        var opts =  {
-          item: item, 
-          uploadUrl: mkUrl(req, '/items/' + item._id.toHexString() + '/:filename'),
-          uploadMethod: 'POST',
-          componentEditorUrl:componentEditorUrl,
-          saveUrl: '/items/:id' 
-        };
-        res.render('item', opts); 
-      }
-    });
-  });
-
-  router.put('/items/:id', returnUnauthorized, function(req, res, next){
-    items.update(req.params.id, req.body, function(err){
-      // debug('item body: %s', req.body);
-      if(err){
-        res.status(400).send(err);
-      } else {
-        res.status(200).send({});
+        res.render('item', {item: item});
       }
     });
   });
 
   router.post('/items', returnUnauthorized, function(req, res, next){
-    items.create(req.session.user.username, req.param('name'), function(err, id){
+    items.create(req.param('name'), function(err, id){
       if(err){
         res.status(400).send('create failed: ', err);
       } else {
@@ -183,18 +159,15 @@ function Index(users, items){
     });
   });
 
-  function assetKey(id, name){
-    return encodeURIComponent(id) + '/' + encodeURIComponent(name);
-  }
+  router.get('/ping', returnUnauthorized, function(req, res, next){
+    res.send('pong');
+  });
 
-  router.post('/items/:id/:filename', returnUnauthorized, addFullUrl, function(req, res, next) {
+  router.post('/image/:filename', returnUnauthorized, addFullUrl, function(req, res, next) {
 
     var mimeType = mime.lookup(req.params.filename);     
 
-    var key = assetKey(req.params.id, req.params.filename); 
-
-    debug('key: ', key);
-
+    var key = encodeURIComponent(req.params.filename);
     var s3Params = {Bucket: bucket, Key: key, ContentType: mimeType, ContentLength: req.body.length};
     
     debug('s3Params: ', s3Params);
@@ -212,11 +185,11 @@ function Index(users, items){
       });
   });
 
-  router.get('/items/:id/:filename', returnUnauthorized, function(req, res, next) {
-    var key = assetKey(req.params.id, req.params.filename); 
+  router.get('/image/:filename', returnUnauthorized, function(req, res, next) {
+    var key = encodeURIComponent(req.params.filename);
     debug('get key:', key);
     client.getFile( '/' + key, function(err, s3res){
-      debug('get ' + req.originalUrl + ' err: ' + err);
+      debug(err, s3res);
       if(err){
         res.status(404).send();
       } else {
@@ -225,9 +198,9 @@ function Index(users, items){
     });
   });
 
-  router.delete('/items/:id/:filename', returnUnauthorized, function(req, res, next) {
+  router.delete('/image/:filename', returnUnauthorized, function(req, res, next) {
 
-    var key = assetKey(req.params.id, req.params.filename); 
+    var key = encodeURIComponent(req.params.filename);
     debug('delete key:', key);
     client.deleteFile('/' + key, function(err){
       debug(err);
@@ -243,4 +216,4 @@ function Index(users, items){
   return router;
 }
 
-module.exports = Index;
+module.exports = Items;

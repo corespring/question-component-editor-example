@@ -1,30 +1,24 @@
-doctype html
+extends layout
 
-html(lang="en")
-  head
-    title Component Editor 
-    link(href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css", rel="stylesheet")
-    script(type="text/javascript", src=componentEditorUrl)
-    script(type="text/javascript", src="//code.jquery.com/jquery-1.12.1.min.js")
-    script.
+block vars 
+  - title = 'My Items'
 
-      $(document).ready(function(){
+block body
+  .container
 
-        var opts = {
-          contentStorage: 'none',
-          uploadUrl: '!{uploadUrl}',
-          uploadMethod: '!{uploadMethod}',
-          componentType: 'corespring-multiple-choice'
-        }
-        
-        function onError(e){
-          console.warn(e);
-        }
+    h1 Create
+    form(action="/items", method="POST")
+      .form-group
+        input#name.form-control(name="name", type='text', placeholder='name...')
 
-        window.componentEditor = new org.corespring.editors.QuestionComponentEditor('.editor-holder', opts, onError);
-      });
+      button.btn.btn-default(type='submit') Submit
 
-  body
-    .container
-      h1 Component Editor
-      .editor-holder
+    hr/
+    h1 items
+    hr/
+
+    - for i in items
+
+      div.link
+        a(href="/items/#{i._id.toHexString()}") 
+          | !{i.name}

@@ -4,9 +4,12 @@ var logger = require('morgan');
 var bodyParser = require('body-parser');
 var Index = require('./routes/index');
 var Users = require('./services/users');
+var Items = require('./services/items');
 var app = express();
 var session = require('express-session');
 var config = require('config');
+var MongoClient = require('mongodb').MongoClient;
+var assert = require('assert');
 
 //CORS middleware
 var allowCrossDomain = function(req, res, next) {
@@ -17,13 +20,18 @@ var allowCrossDomain = function(req, res, next) {
   next();
 };
 
+
+var uri = config.get('MONGO_URI');
+
 MongoClient.connect(uri, function(err, db) {
 
   assert.equal(null, err);
   console.log("Connected correctly to server");
 
   var users = new Users(db.collection('users'));
-  var indexRoutes = new Index(users);
+  var items = new Items(db.collection('items'));
+
+  var indexRoutes = new Index(users, items);
 
   app.use(logger('dev'));
   app.use(bodyParser.json({limit: '10mb'}));

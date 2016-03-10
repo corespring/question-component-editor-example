@@ -1,0 +1,67 @@
+extends layout
+
+block vars
+  - title = 'item' 
+
+block head
+
+  script(type="text/javascript", src=componentEditorUrl)
+
+  script.
+    $(document).ready(function(){
+      var opts = {
+        onClientReady: function(){
+          console.log('ready!');
+        },
+        contentStorage: 'none',
+        uploadUrl: '!{uploadUrl}',
+        uploadMethod: '!{uploadMethod}',
+        componentType: 'corespring-multiple-choice',
+        xhtml: !{item.xhtml ? "'" + item.xhtml + "'" : 'undefined'},
+        componentModel: !{item.componentModel ? JSON.stringify(item.componentModel) : 'undefined'}
+      }
+      
+      function onError(e){
+        console.warn(e);
+      }
+
+      window.componentEditor = new org.corespring.editors.QuestionComponentEditor('.editor-holder', opts, onError);
+    
+
+      $('.save').click(function(){
+
+        function onError(){
+          console.warn('update failed');
+        }
+
+        function onSuccess(){
+          console.log('update successful');
+        }
+
+        window.componentEditor.getData(function(r){
+
+          if(r.error){
+            console.warn(r.error);
+          } else {
+
+            $.ajax({
+              type: 'PUT',
+              url: '!{updateUrl}',
+              contentType: 'application/json',
+              data: JSON.stringify(r.result),
+              success: onSuccess,
+              error: onError,
+              dataType: 'json'
+            });
+          }
+        });
+      });
+    });
+
+block body
+  .container
+    h1 !{item.name}
+    .buttons.nav.nav-bar
+      button(type="button").save.btn.btn-primary Save
+    hr/
+    .editor-holder

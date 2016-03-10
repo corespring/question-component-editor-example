@@ -26,6 +26,8 @@ It provides the following endpoints:
 
     npm start
 ```
+
+
 # Dev (reload)
 
 ```
@@ -40,4 +42,10 @@ It provides the following endpoints:
     node-debug bin/www
 ```
 
+# Logs 
+
+```
+   export DEBUG="app:routes,..."
+   npm start
+```
 Then configure the standalone component editor to use this url.

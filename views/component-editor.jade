@@ -1,5 +1,8 @@
 extends layout 
 
+block vars
+  - title = 'Component Editor'
+  
 block head 
   script(type="text/javascript", src=componentEditorUrl)
   script.
@@ -20,7 +23,7 @@ block head
       window.componentEditor = new org.corespring.editors.QuestionComponentEditor('.editor-holder', opts, onError);
     });
 
-  block body 
-    .container
-      h1 Component Editor
-      .editor-holder
+block body 
+  .container
+    h1 Component Editor
+    .editor-holder
