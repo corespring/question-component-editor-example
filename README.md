@@ -53,4 +53,3 @@ For deployment you must configure the following:
    export DEBUG="app:routes,..."
    npm start
 ```
-Then configure the standalone component editor to use this url.
