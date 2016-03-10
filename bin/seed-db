@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+
+var config = require('config');
+var MongoClient = require('mongodb').MongoClient;
+var assert = require('assert');
+
+var uri = process.argv[2] || config.get('MONGO_URI');
+console.log('mongo uri: ', uri);
+MongoClient.connect(uri, function(err, db) {
+  assert.equal(null, err);
+  console.log("Connected correctly to server");
+
+  var collection = db.collection('users');
+  collection.ensureIndex({username: 1}, {unique:true, background:false, w:1});
+
+  collection.insert({
+    username: 'ed', 
+    password: 'letmein'
+  }, 
+  function(err, result){
+    db.close();
+  });
+});

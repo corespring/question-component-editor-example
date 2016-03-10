@@ -2,7 +2,8 @@ var express = require('express');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
-var routes = require('./routes/index');
+var Index = require('./routes/index');
+var Users = require('./services/users');
 var app = express();
 var session = require('express-session');
 var config = require('config');
@@ -16,28 +17,35 @@ var allowCrossDomain = function(req, res, next) {
   next();
 };
 
-app.use(logger('dev'));
-app.use(bodyParser.json({limit: '10mb'}));
-app.use(bodyParser.raw({limit: '10mb'}));
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(session({secret:'keyboard cat'}));
-// app.use(passport.initialize());
-// app.use(passport.session()); 
-app.use(allowCrossDomain);
-app.set('view engine', 'jade');
-app.use('/', routes);
+MongoClient.connect(uri, function(err, db) {
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
+  assert.equal(null, err);
+  console.log("Connected correctly to server");
 
-app.use(function(err, req, res, next) {
-  console.log('Error: ',err);
-  res.status(err.status || 500);
-  res.json(err);
+  var users = new Users(db.collection('users'));
+  var indexRoutes = new Index(users);
+
+  app.use(logger('dev'));
+  app.use(bodyParser.json({limit: '10mb'}));
+  app.use(bodyParser.raw({limit: '10mb'}));
+  app.use(bodyParser.urlencoded({extended: true}));
+  app.use(session({secret:'keyboard cat'}));
+  app.use(allowCrossDomain);
+  app.set('view engine', 'jade');
+  app.use('/', indexRoutes);
+
+  // catch 404 and forward to error handler
+  app.use(function(req, res, next) {
+    var err = new Error('Not Found');
+    err.status = 404;
+    next(err);
+  });
+
+  app.use(function(err, req, res, next) {
+    console.log('Error: ',err);
+    res.status(err.status || 500);
+    res.json(err);
+  });
 });
 
 module.exports = app;
