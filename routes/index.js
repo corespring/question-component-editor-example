@@ -31,6 +31,7 @@ function Index(users, items){
     }
 
     debug(props);
+    
     return {
       bucket: bucket,
       key: process.env.AWS_ACCESS_KEY_ID || props.aws_access_key_id,
@@ -96,7 +97,7 @@ function Index(users, items){
 
   router.get('/component-editor', backToLogin, function(req, res){
 
-    var url = config.get('COMPONENT_EDITOR_URL');
+    var url = config.get('COMPONENT_EDITOR_JS_URL');
 
     res.render('component-editor', {
       componentEditorUrl: url,
@@ -136,7 +137,7 @@ function Index(users, items){
       if(err){
         res.status(404).send('error loading: ' + err);
       } else {
-        var componentEditorUrl = config.get('COMPONENT_EDITOR_URL');
+        var componentEditorUrl = config.get('COMPONENT_EDITOR_JS_URL');
 
         item.xhtml = item.xhtml.replace(/(?:\r\n|\r|\n)/g, '<br />');
 
