@@ -32,6 +32,11 @@ For deployment you must configure the following:
 
     npm start
 ```
+# Test
+
+```
+    mocha test/integration
+```
 
 # Dev (reload)
 
