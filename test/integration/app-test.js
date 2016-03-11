@@ -162,6 +162,9 @@ describe('app', function(){
     });
 
     it('GET /items/:id allows image retrieval', function(done){
+
+      this.timeout(4000);
+      
       upload()
         .end(function(err, res){
           get(res.body.url)
@@ -172,7 +175,7 @@ describe('app', function(){
     it('DELETE /items/:id deletes image', function(done){
 
       this.timeout(4000);
-      
+
       upload()
         .end(function(err, res){
           var newUrl = res.body.url;

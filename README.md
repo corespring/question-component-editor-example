@@ -35,6 +35,7 @@ For deployment you must configure the following:
 # Test
 
 ```
+    export NODE_ENV=test
     mocha test/integration
 ```
 
