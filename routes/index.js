@@ -9,7 +9,10 @@ var mime = require('mime');
 var streamingS3 = require('streaming-s3');
 var properties = require ('properties');
 var debug = require('debug')('app:routes');
+var sessionDebug = require('debug')('app:session');
 var fs = require('fs');
+var multer = require('multer');
+var upload = multer({});
 
 function Index(users, items){
 
@@ -77,11 +80,11 @@ function Index(users, items){
 
 
   function restrict(onFail, req, res, next) {
-    debug('Session: %s', JSON.stringify(req.session));
+    sessionDebug('Session: %s', JSON.stringify(req.session));
     if (req.session.user) {
       next();
     } else {
-      debug('failed to find user in session');
+      sessionDebug('failed to find user in session');
       onFail(req, res);
     }
   }
@@ -93,17 +96,6 @@ function Index(users, items){
 
   var returnUnauthorized = restrict.bind(this, function(req, res){
     res.status(401).send('Not allowed');
-  });
-
-  router.get('/component-editor', backToLogin, function(req, res){
-
-    var url = config.get('COMPONENT_EDITOR_JS_URL');
-
-    res.render('component-editor', {
-      componentEditorUrl: url,
-      uploadUrl: mkUrl(req, '/image/:filename'),
-      uploadMethod: 'POST'
-    });
   });
 
   router.get('/login', function(req, res){
@@ -139,11 +131,12 @@ function Index(users, items){
       } else {
         var componentEditorUrl = config.get('COMPONENT_EDITOR_JS_URL');
 
-        item.xhtml = item.xhtml.replace(/(?:\r\n|\r|\n)/g, '<br />');
+        debug('item.xhtml', item.xhtml);
+        item.xhtml = item.xhtml ? item.xhtml.replace(/(?:\r\n|\r|\n)/g, '<br />') : undefined;
 
         var opts =  {
           item: item, 
-          uploadUrl: mkUrl(req, '/items/' + item._id.toHexString() + '/:filename'),
+          uploadUrl: mkUrl(req, '/items/' + item._id.toHexString()),
           uploadMethod: 'POST',
           componentEditorUrl:componentEditorUrl,
           saveUrl: '/items/:id' 
@@ -165,6 +158,8 @@ function Index(users, items){
   });
 
   router.post('/items', returnUnauthorized, function(req, res, next){
+
+    debug('create... user: ', req.session.user);
     items.create(req.session.user.username, req.param('name'), function(err, id){
       if(err){
         res.status(400).send('create failed: ', err);
@@ -188,40 +183,67 @@ function Index(users, items){
     return encodeURIComponent(id) + '/' + encodeURIComponent(name);
   }
 
-  router.post('/items/:id/:filename', returnUnauthorized, addFullUrl, function(req, res, next) {
+  router.post('/items/:id', 
+    returnUnauthorized, 
+    addFullUrl, 
+    upload.single('file'), 
+    function(req, res, next) {
 
-    var mimeType = mime.lookup(req.params.filename);     
+    debug('params: ', req.params);
+    debug('file: ', req.file);
+    debug('body: ', req.body);
+    var filename = req.file.originalname;
 
-    var key = assetKey(req.params.id, req.params.filename); 
+    var mimeType = mime.lookup(filename);     
+
+    var key = assetKey(req.params.id,  new Date().getTime() + '-' + filename); 
 
     debug('key: ', key);
+    debug('filename', filename);
 
-    var s3Params = {Bucket: bucket, Key: key, ContentType: mimeType, ContentLength: req.body.length};
+    var s3Params = {Bucket: bucket, Key: key, ContentType: mimeType, ContentLength: req.file.size};
     
     debug('s3Params: ', s3Params);
     
     var s3obj = new AWS.S3({params: s3Params});
 
     s3obj
-      .upload({Body: req.body})
+      .upload({Body: req.file.buffer})
       .on('httpUploadProgress', function(evt) { 
         debug(evt); 
       })
       .send(function(err, data) { 
-        debug(err, data);
-        res.send(req.fullUrl); 
+        debug('s3 send complete for key: ' + key, err, data);
+        var returnUrl = mkUrl(req, '/items/' + key); 
+        debug('returnUrl: ', returnUrl);
+        res.status(201).send({ url: returnUrl}); 
       });
   });
 
   router.get('/items/:id/:filename', returnUnauthorized, function(req, res, next) {
     var key = assetKey(req.params.id, req.params.filename); 
-    debug('get key:', key);
-    client.getFile( '/' + key, function(err, s3res){
-      debug('get ' + req.originalUrl + ' err: ' + err);
-      if(err){
+
+    /** 
+     * Note: knox won't return an error of the file doesn't exist in getfile
+     * so you can't just pipe from getFile or you'll get a 200 and an 
+     * s3 xml error with 'No Such Key' in it.
+     * So have to headFile first the getFile - a bit cumbersome.
+     */
+
+    client.headFile('/' + key, function(err, h){
+      debug('headFile: ', err, h);
+      if(err || h.statusCode === 404){
         res.status(404).send();
       } else {
-        s3res.pipe(res);
+        client.getFile( '/' + key, function(err, s3res){
+          debug('GET: s3 key:', key);
+          debug('GET: originalUrl ' + req.originalUrl + ' err: ' + err);
+          if(err){
+            res.status(404).send();
+          } else {
+            s3res.pipe(res);
+          }
+        });
       }
     });
   });
@@ -232,6 +254,7 @@ function Index(users, items){
     debug('delete key:', key);
     client.deleteFile('/' + key, function(err){
       debug(err);
+
       if(err){
         res.status(404).send();
       } else {
