@@ -161,10 +161,10 @@ describe('app', function(){
       upload().expect(201, done);
     });
 
-    it('GET /items/:id allows image retrieval', function(done){
+    it('GET /items/:id/:filename allows image retrieval', function(done){
 
       this.timeout(4000);
-      
+
       upload()
         .end(function(err, res){
           get(res.body.url)
