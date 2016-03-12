@@ -21,7 +21,7 @@ function Index(users, items){
   }
 
   function loadKeySecret(){
-    var bucket = process.env.LAUNCH_EXAMPLE_BUCKET || 'component-editor-launch-examples';
+    var bucket = config.get('LAUNCH_EXAMPLE_BUCKET'); 
     var propsString;
     var props;
     try{ 
@@ -104,7 +104,7 @@ function Index(users, items){
 
   router.post('/login', function(req, res){
 
-    users.find(req.param('username'), function(err, user){
+    users.find(req.body.username, function(err, user){
       if(err){
         res.redirect('/login');
       } else {
@@ -112,7 +112,7 @@ function Index(users, items){
           res.redirect('/login');
         } else {
           //plain text password - do not use in production
-          if(user.password === req.param('password')){
+          if(user.password === req.body.password){
             req.session.user = user;
             res.redirect('/items');
           } else {
@@ -160,7 +160,7 @@ function Index(users, items){
   router.post('/items', returnUnauthorized, function(req, res, next){
 
     debug('create... user: ', req.session.user);
-    items.create(req.session.user.username, req.param('name'), function(err, id){
+    items.create(req.session.user.username, req.body.name, function(err, id){
       if(err){
         res.status(400).send('create failed: ', err);
       } else {
@@ -213,10 +213,14 @@ function Index(users, items){
         debug(evt); 
       })
       .send(function(err, data) { 
-        debug('s3 send complete for key: ' + key, err, data);
-        var returnUrl = mkUrl(req, '/items/' + key); 
-        debug('returnUrl: ', returnUrl);
-        res.status(201).send({ url: returnUrl}); 
+        if(err){
+          debug('s3 send complete for key: ' + key, err);
+          res.status(400).send(); 
+        } else {
+          var returnUrl = mkUrl(req, '/items/' + key); 
+          debug('returnUrl: ', returnUrl);
+          res.status(201).send({ url: returnUrl}); 
+        }
       });
   });
 
@@ -231,7 +235,7 @@ function Index(users, items){
      */
 
     client.headFile('/' + key, function(err, h){
-      debug('headFile: ', err, h);
+      debug('headFile: ', err);
       if(err || h.statusCode === 404){
         res.status(404).send();
       } else {

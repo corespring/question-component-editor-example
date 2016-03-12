@@ -8,42 +8,127 @@ var MongoClient = require('mongodb').MongoClient;
 var config = require('config');
 var fs = require('fs');
 var path = require('path');
-
-var server, app;
-
+var Promise = require('bluebird');
+var AWS = require('aws-sdk');
+AWS.config.region = config.has('AWS_REGION') ? config.get('AWS_REGION') : 'us-east-1';
+var connect = Promise.promisify(MongoClient.connect);
 var uri = config.get('MONGO_URI');
-
 var user = {username: 'test', password: 'test'};
+var server, app;
 
 describe('app', function(){
 
-  function clearDB(done){
-    MongoClient.connect(uri, function(err, db) {
-
+  function dropCollections(db){
+    return new Promise(function(resolve, reject){
+      debug('dropCollections....');
       db.collection('users').drop();
       db.collection('items').drop();
-      db.close();
-      done();
+      resolve(db);
     });
   }
 
-  function addTestUser(done){
-    clearDB(function(){
-      MongoClient.connect(uri, function(err, db) {
-        db.collection('users').insertOne(user, function(err, r){
-          db.close();
-          done(err);
-        });
+  function addTestUser(db){
+    return new Promise(function(resolve, reject){
+      debug('add test user...');
+      db.collection('users').insertOne(user, function(err, r){
+        if(err){
+          reject(err);
+        } else {
+          resolve(db);
+        }
       });
     });
   }
-  
-  function removeTestUser(done){
-    MongoClient.connect(uri, function(err, db) {
-      db.collection('users').remove({username: user.username}, function(err, r){
-        db.close();
-        done(err);
+
+  function createBucket(){
+    return new Promise( function(resolve, reject) {
+      debug('create bucket...');
+      var bucket = config.get('LAUNCH_EXAMPLE_BUCKET');
+      debug('bucket: ', config.get('LAUNCH_EXAMPLE_BUCKET'));
+      var s3 = new AWS.S3({params: {Bucket: bucket}});
+      s3.createBucket(function(err) {
+        if (err) { reject(err); }
+        else {
+          resolve();
+        }
       });
+    });
+  }
+
+  function deleteBucket(){
+      debug('delete bucket...');
+      var bucket = config.get('LAUNCH_EXAMPLE_BUCKET');
+      var params = {Bucket: bucket};
+      debug('bucket: ', config.get('LAUNCH_EXAMPLE_BUCKET'));
+      var s3 = new AWS.S3({params: params}); 
+      Promise.promisifyAll(Object.getPrototypeOf(s3));
+
+      function list(params) { 
+        return new Promise(function(resolve, reject){ 
+          s3.listObjects(params, function(err, result){
+            if(err){
+              reject(err);
+            } else {
+              resolve(result);
+            }
+          });
+        });
+      }
+
+      var deletePromise = Promise.promisify(s3.deleteBucket);
+
+      function deleteAll(listResult){
+        return new Promise(function(resolve, reject){
+
+          if(listResult.Contents.length === 0){
+            resolve();
+          } else {
+            var deleteParams = {Bucket: bucket, Delete : {Objects:[]}};
+
+            listResult.Contents.forEach(function(content) {
+              deleteParams.Delete.Objects.push({Key: content.Key});
+            });
+            debug('delete objects...', JSON.stringify(deleteParams));
+
+            s3.deleteObjects(deleteParams, function(err, data) {
+              if (err) {
+                reject(err);
+              } else {
+                resolve();
+              }
+            });
+          }
+        });
+      }
+
+      return list({Bucket: bucket})
+        .then(deleteAll)
+        .then(function() { return s3.deleteBucketAsync(params); });
+  }
+
+  function disconnect(db){
+    return new Promise(function(resolve){
+      debug('disconnect...');
+      db.close();
+      resolve();
+    });
+  }
+
+  function bootServer(){
+    return new Promise(function(resolve, reject){
+      debug('boot server...');
+      app = require('../../app');
+      server = http.createServer(app);
+      server.on('error', reject);
+      server.on('listening', function(){
+        debug('server listening...');
+        var addr = server.address();
+        var bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
+        debug('Listening on ' + bind);
+        //Give the app some time to boot up...
+        setTimeout(resolve, 1000); 
+      });
+      server.listen(5412);
     });
   }
 
@@ -51,34 +136,32 @@ describe('app', function(){
 
     this.timeout(5000);
 
-    function onError(error) {
-      throw error;
-    }
-
-    function onListening() {
-      var addr = server.address();
-      var bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
-      console.log('Listening on ' + bind);
-      debug('Listening on ' + bind);
-      //Give the app some time to boot up...
-      setTimeout(done, 1000);
-    }
-
     if(process.env.NODE_ENV !== 'test'){
       done(new Error('You have to run the tests with NODE_ENV set to \'test\''));
     } else {
-      addTestUser(function(err){
-        if(err){
+      connect(uri)
+        .then(dropCollections)
+        .then(addTestUser)
+        .then(disconnect)
+        .then(createBucket)
+        .then(bootServer)
+        .then(done)
+        .catch(function(err){
+          debug('error: ', err);
           done(err);
-        } else {
-          app = require('../../app');
-          server = http.createServer(app);
-          server.on('error', onError);
-          server.on('listening', onListening);
-          server.listen(5412);
-        }
-      });
+        });
     }
+  });
+
+  after(function(done){
+    this.timeout(7000);
+    deleteBucket()
+      .then(function(){
+        done();
+      })
+      .catch(function(e){
+        done(new Error(e)); 
+      });
   });
 
   describe('GET /', function(){
@@ -164,11 +247,20 @@ describe('app', function(){
     it('GET /items/:id/:filename allows image retrieval', function(done){
 
       this.timeout(4000);
-
       upload()
+        .expect(201)
         .end(function(err, res){
-          get(res.body.url)
-            .expect(200, done);
+          if(err || !res.body.url){
+            done(err);
+          } else {
+            get(res.body.url)
+              .expect(200)
+              .end(function(err, res){
+                debug(res.body);
+                debug(res.headers);
+                done();
+              });
+          }
         });
     });
     
@@ -177,6 +269,7 @@ describe('app', function(){
       this.timeout(4000);
 
       upload()
+        .expect(201)
         .end(function(err, res){
           var newUrl = res.body.url;
           deleteAsset(newUrl)

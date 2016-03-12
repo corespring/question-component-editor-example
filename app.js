@@ -37,7 +37,7 @@ MongoClient.connect(uri, function(err, db) {
   app.use(bodyParser.json({limit: '10mb'}));
   app.use(bodyParser.raw({limit: '10mb'}));
   app.use(bodyParser.urlencoded({extended: true}));
-  app.use(session({secret:'keyboard cat'}));
+  app.use(session({secret:'keyboard cat', resave: false, saveUninitialized: false}));
   app.use(allowCrossDomain);
   app.set('view engine', 'jade');
   app.use('/', indexRoutes);
