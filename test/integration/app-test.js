@@ -16,18 +16,20 @@ var uri = config.get('MONGO_URI');
 var user = {username: 'test', password: 'test'};
 var server, app;
 
-describe('app', function(){
+describe('app', () => { 
+  
+  "use strict";
 
-  function dropCollections(db){
+  let dropCollections = (db) => {
     return new Promise(function(resolve, reject){
       debug('dropCollections....');
       db.collection('users').drop();
       db.collection('items').drop();
       resolve(db);
     });
-  }
+  };
 
-  function addTestUser(db){
+  let addTestUser = (db) => {
     return new Promise(function(resolve, reject){
       debug('add test user...');
       db.collection('users').insertOne(user, function(err, r){
@@ -38,9 +40,9 @@ describe('app', function(){
         }
       });
     });
-  }
+  };
 
-  function createBucket(){
+  let createBucket = () => {
     return new Promise( function(resolve, reject) {
       debug('create bucket...');
       var bucket = config.get('LAUNCH_EXAMPLE_BUCKET');
@@ -53,9 +55,9 @@ describe('app', function(){
         }
       });
     });
-  }
+  };
 
-  function deleteBucket(){
+  let deleteBucket = () => {
       debug('delete bucket...');
       var bucket = config.get('LAUNCH_EXAMPLE_BUCKET');
       var params = {Bucket: bucket};
@@ -77,7 +79,7 @@ describe('app', function(){
 
       var deletePromise = Promise.promisify(s3.deleteBucket);
 
-      function deleteAll(listResult){
+      let deleteAll = (listResult) => {
         return new Promise(function(resolve, reject){
 
           if(listResult.Contents.length === 0){
@@ -99,23 +101,23 @@ describe('app', function(){
             });
           }
         });
-      }
+      };
 
       return list({Bucket: bucket})
         .then(deleteAll)
         .then(function() { return s3.deleteBucketAsync(params); });
-  }
+  };
 
-  function disconnect(db){
+  let disconnect = (db) => {
     return new Promise(function(resolve){
       debug('disconnect...');
       db.close();
       resolve();
     });
-  }
+  };
 
-  function bootServer(){
-    return new Promise(function(resolve, reject){
+  let bootServer = () => {
+    return new Promise((resolve, reject) => {
       debug('boot server...');
       app = require('../../app');
       server = http.createServer(app);
@@ -130,11 +132,9 @@ describe('app', function(){
       });
       server.listen(5412);
     });
-  }
+  };
 
-  before(function(done){
-
-    this.timeout(5000);
+  before((done) => {
 
     if(process.env.NODE_ENV !== 'test'){
       done(new Error('You have to run the tests with NODE_ENV set to \'test\''));
@@ -153,19 +153,14 @@ describe('app', function(){
     }
   });
 
-  after(function(done){
-    this.timeout(7000);
+  after((done) => {
     deleteBucket()
-      .then(function(){
-        done();
-      })
-      .catch(function(e){
-        done(new Error(e)); 
-      });
+      .then(() => { done(); })
+      .catch((e) => { done(new Error(e)); });
   });
 
-  describe('GET /', function(){
-    it('302 -> /login', function(done){
+  describe('GET /', () => {
+    it('302 -> /login', (done) => {
       request(server)
         .get('/')
         .expect(302)
@@ -173,11 +168,11 @@ describe('app', function(){
     });
   });
 
-  describe('assets', function(){
+  describe('assets', () => {
 
     var cookie, itemId, fileData;
 
-    before(function(done){
+    before((done) => {
 
       fileData = fs.readFileSync(path.resolve(__dirname + '/puppy.png'));
 
@@ -208,48 +203,47 @@ describe('app', function(){
     });
 
     
-    function upload(){
+    let upload = () => {
       return request(server)
         .post('/items/' + itemId)
         .set('cookie', cookie)
         .type('form')
         .attach('file', path.resolve(__dirname + '/puppy.png'))
         .field('filename', 'puppy.png');
-    } 
+    };
 
-    function get(fullUrl){
+    let  get= (fullUrl) => {
       debug('load new asset: ', fullUrl);
       var trimmed = fullUrl.replace(/^http:\/\/.*?\//, '/');
       debug('trimmed: ', trimmed);
       return request(server)
         .get(trimmed)
         .set('cookie', cookie);
-    }
+    };
 
-    function deleteAsset(fullUrl){
+    let deleteAsset = (fullUrl) => {
       debug('delete asset: ', fullUrl);
       var trimmed = fullUrl.replace(/^http:\/\/.*?\//, '/');
       debug('trimmed: ', trimmed);
       return request(server)
         .del(trimmed)
         .set('cookie', cookie);
-    }
+    };
     
-    it('has an item', function(){
+    it('has an item', () => {
       debug('itemId: %s', itemId);
       should.exist(itemId);
     });
 
-    it('POST /items/:id allows image upload', function(done){
+    it('POST /items/:id allows image upload', (done) => {
       upload().expect(201, done);
     });
 
-    it('GET /items/:id/:filename allows image retrieval', function(done){
+    it('GET /items/:id/:filename allows image retrieval', (done) => {
 
-      this.timeout(4000);
       upload()
         .expect(201)
-        .end(function(err, res){
+        .end((err, res) => {
           if(err || !res.body.url){
             done(err);
           } else {
@@ -264,16 +258,14 @@ describe('app', function(){
         });
     });
     
-    it('DELETE /items/:id deletes image', function(done){
-
-      this.timeout(4000);
+    it('DELETE /items/:id deletes image', (done) => {
 
       upload()
         .expect(201)
-        .end(function(err, res){
+        .end((err, res) => {
           var newUrl = res.body.url;
           deleteAsset(newUrl)
-            .end(function(err, res){
+            .end((err, res) => {
               get(newUrl).expect(404, done);
             });
         });
