@@ -26,7 +26,7 @@ var uri = config.get('MONGO_URI');
 MongoClient.connect(uri, function(err, db) {
 
   assert.equal(null, err);
-  console.log("Connected correctly to server");
+  console.log('Connected correctly to server');
 
   var users = new Users(db.collection('users'));
   var items = new Items(db.collection('items'));

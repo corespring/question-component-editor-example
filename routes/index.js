@@ -13,6 +13,8 @@ var sessionDebug = require('debug')('app:session');
 var fs = require('fs');
 var multer = require('multer');
 var upload = multer({});
+var corespring = require('../services/corespring');
+var URI = require('urijs');
 
 function Index(users, items){
 
@@ -73,12 +75,7 @@ function Index(users, items){
     req.fullUrl = mkUrl(req, req.originalUrl);
     next();
   }
-
-  router.get('/', function(req, res){
-    res.redirect('/login');
-  });
-
-
+  
   function restrict(onFail, req, res, next) {
     sessionDebug('Session: %s', JSON.stringify(req.session));
     if (req.session.user) {
@@ -97,6 +94,24 @@ function Index(users, items){
   var returnUnauthorized = restrict.bind(this, function(req, res){
     res.status(401).send('Not allowed');
   });
+
+  router.get('/', function(req, res){
+    res.redirect('/login');
+  });
+
+  router.get('/user/profile', backToLogin, (req, res) => {
+    res.render('profile', {user: req.session.user});  
+  });
+
+  router.put('/user/profile', returnUnauthorized, (req, res) => {
+    debug('req.session.user.username: ', req.session.user.username);
+    debug('req.body: ', req.body);
+    users.update(req.session.user.username, req.body, (err, u) => {
+      req.session.user = u;
+      res.json(u);
+    });
+  });
+
 
   router.get('/login', function(req, res){
     res.render('login');
@@ -129,19 +144,36 @@ function Index(users, items){
       if(err){
         res.status(404).send('error loading: ' + err);
       } else {
-        var componentEditorUrl = config.get('COMPONENT_EDITOR_JS_URL');
+        
+        var baseUrl = config.get('COMPONENT_EDITOR_HOST') + config.get('COMPONENT_EDITOR_JS_PATH');
+        var addQueryParams = config.has('CONTEXT') && config.get('CONTEXT') == 'corespring-api';
+        var params = addQueryParams ? corespring.createPlayerTokenFromUser(config.get('COMPONENT_EDITOR_HOST'), req.session.user) : new Promise((resolve) => {resolve({});});
 
-        debug('item.xhtml', item.xhtml);
-        item.xhtml = item.xhtml ? item.xhtml.replace(/(?:\r\n|\r|\n)/g, '<br />') : undefined;
 
-        var opts =  {
-          item: item, 
-          uploadUrl: mkUrl(req, '/items/' + item._id.toHexString()),
-          uploadMethod: 'POST',
-          componentEditorUrl:componentEditorUrl,
-          saveUrl: '/items/:id' 
-        };
-        res.render('item', opts); 
+        params
+          .then((p) => {
+            debug('item.xhtml', item.xhtml);
+            debug('query params: ', p);
+            
+            var componentEditorUrl = URI(baseUrl)
+              .addSearch('apiClient', p.apiClient)
+              .addSearch('playerToken', p.playerToken).toString();
+
+            item.xhtml = item.xhtml ? item.xhtml.replace(/(?:\r\n|\r|\n)/g, '<br />') : undefined;
+
+            var opts =  {
+              item: item, 
+              uploadUrl: mkUrl(req, '/items/' + item._id.toHexString()),
+              uploadMethod: 'POST',
+              componentEditorUrl:componentEditorUrl,
+              saveUrl: '/items/:id' ,
+              queryParams: p
+            };
+            res.render('item', opts); 
+          })
+          .catch((e) => {
+            res.status(500).send('Error loading item: ' + JSON.stringify(e));
+          });
       }
     });
   });

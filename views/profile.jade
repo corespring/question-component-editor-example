@@ -1,0 +1,57 @@
+extends layout 
+
+block vars
+  - title = 'Profile'
+
+block head
+
+  script.
+
+    $(document).ready(function(){
+      $('.submit').click(function(){
+
+        var data = {
+          clientId: $('#clientId').val(),
+          clientSecret: $('#clientSecret').val()
+        }
+
+        $.ajax({
+          type: 'PUT',
+          url: '/user/profile',
+          contentType: 'application/json',
+          data: JSON.stringify(data),
+          success: function(){
+            console.log('saved')
+          },
+          error: function(err){
+            console.warn('error: ', err);
+          },
+          dataType: 'json'
+        })
+      });
+    });
+
+block body 
+  .container
+    h1 User Profile
+
+    div.form
+
+      .form-group
+        label username
+        input.form-control(type='text',disabled, value=user.username)
+      .form-group
+        label(for='clientId') client id
+        input#clientId.form-control(
+          name="clientId", 
+          type='text', 
+          placeholder='clientId', 
+          value=user.clientId)
+      .form-group
+        label(for='clientSecret') client secret
+        input#clientSecret.form-control(
+          name="clientSecret", 
+          type='text', 
+          placeholder='clientSecret', 
+          value=user.clientSecret)
+      button.submit.btn.btn-default(type='submit') Submit

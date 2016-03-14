@@ -14,6 +14,7 @@ block head
           console.log('ready!');
         },
         previewMode: 'preview-right',
+        queryParams: !{queryParams ? JSON.stringify(queryParams) : '{}'},
         contentStorage: 'none',
         uploadUrl: '!{uploadUrl}',
         uploadMethod: '!{uploadMethod}',
