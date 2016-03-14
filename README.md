@@ -4,6 +4,11 @@ This is an example application that interacts with a Corespring Question compone
 
 The example application stores all the data and assets - corespring stores nothing.
 
+This is done by setting 2 properties in the question component editor launch options: 
+
+* setting `contentStorage` to 'none'
+* setting `uploadUrl` to a url that consumes a multipart form request with a single control: 'file'. The 'file' control also contains the file name in `Content-Disposition: filename`. See the docs for more information on the asset endpoints should be implemented.
+
 ## Configuration
 
 The app is configured with defaults to allow a developer to run it straight away against the corespring test application (aka no auth required).
