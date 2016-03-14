@@ -11,9 +11,14 @@ This is done by setting 2 properties in the question component editor launch opt
 
 ## Configuration
 
-The app is configured with defaults to allow a developer to run it straight away against the corespring test application (aka no auth required).
+The app has a few dependencies that you'll need to set up: 
 
-For deployment you must configure the following: 
+* A mongo db (with a user you can use to log in)
+* An S3 bucket
+
+For ease of development the app is configured with defaults so that it will run straight away against the corespring test application (aka no auth required).
+
+To configure for any other environment you'll need to set up the db and bucket and then set the following env vars: 
 
 * LAUNCH_EXAMPLE_BUCKET - the name of an existing s3 bucket on which to store the assets (default: component-editor-launch-examples)
 
@@ -27,7 +32,7 @@ For deployment you must configure the following:
 
 The users collection is used for authentication.
 
-> You have to create the users collection yourself, the app doesnt boot with one.
+> You have to create the users collection yourself, the app doesn't boot with one.
  
 A user has the following schema: 
 
