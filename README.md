@@ -53,13 +53,15 @@ A user has the following schema:
 
 ## Running against corespring-api
 
+We use [config](https://npmjs.org/package/config) to allow us to change target.
 
 ```bash
 # make sure you have a user with an apiClient and secret
 export NODE_ENV=cs-api
 npm start
-
+# will run against a local cs-api server.
 ```
+
 To run against platform.corespring.org a few extra steps are required.
 
 * set `CONTEXT` to 'corespring-api' - so the app knows it needs to create a player token.
@@ -67,46 +69,41 @@ To run against platform.corespring.org a few extra steps are required.
 * make sure that you have a valid `clientId` and `clientSecret` defined for your user - this should be an id/secret for an `ApiClient` you have on `platform.corespring.org`. This is required to create the player token used to launch the editor.
 
 
-```
 
 # Install
 
-```
-     
-    npm install
+```bash
+npm install
 ```
 
 # Run
 
-```
-
-    npm start
+```bash
+npm start
 ```
 
 # Test
 
-```
-    export NODE_ENV=test
-    mocha test/integration
+```bash
+export NODE_ENV=test
+mocha test/integration
 ```
 
 # Dev (reload)
 
-```
-
-    nodemon bin/www
+```bash
+nodemon bin/www
 ```
 
 # Debug
 
-```
-
-    node-debug bin/www
+```bash
+node-debug bin/www
 ```
 
 # Logs 
 
-```
-   export DEBUG="app:routes,..."
-   npm start
+```bash
+export DEBUG="app:routes,..."
+npm start
 ```
