@@ -48,6 +48,8 @@ A user has the following schema:
       //required if running against platform.corespring.org - a clientSecret for an ApiClient
       clientSecret: ''
     }
+```
+
 
 ## Running against corespring-api
 
