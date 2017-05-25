@@ -51,6 +51,13 @@ A user has the following schema:
 
 ## Running against corespring-api
 
+
+```bash
+# make sure you have a user with an apiClient and secret
+export NODE_ENV=cs-api
+npm start
+
+```
 To run against platform.corespring.org a few extra steps are required.
 
 * set `CONTEXT` to 'corespring-api' - so the app knows it needs to create a player token.

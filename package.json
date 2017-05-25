@@ -2,9 +2,9 @@
   "name": "external-image-endpoints",
   "version": "1.0.0",
   "private": true,
-  "engines" : { 
-    "node" : "~5.4.1" 
-  }, 
+  "engines": {
+    "node": "~5.4.1"
+  },
   "scripts": {
     "start": "node ./bin/www"
   },
@@ -28,7 +28,8 @@
     "passport-local": "^1.0.0",
     "properties": "^1.2.1",
     "serve-favicon": "~2.3.0",
-    "streaming-s3": "^0.4.1"
+    "streaming-s3": "^0.4.1",
+    "urijs": "^1.17.1"
   },
   "devDependencies": {
     "mocha": "^2.4.5",
